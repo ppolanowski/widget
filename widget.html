@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mój Pierwszy Widget</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      .widget-container {
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        min-width: 300px;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 28px;
+      }
+
+      .emoji {
+        font-size: 60px;
+        margin-bottom: 20px;
+      }
+
+      .counter {
+        font-size: 48px;
+        color: #667eea;
+        font-weight: bold;
+        margin: 20px 0;
+      }
+
+      button {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 18px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin: 5px;
+      }
+
+      button:hover {
+        background: #764ba2;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      .reset-btn {
+        background: #e74c3c;
+        font-size: 14px;
+        padding: 10px 20px;
+      }
+
+      .reset-btn:hover {
+        background: #c0392b;
+      }
+
+      .message {
+        margin-top: 20px;
+        font-size: 16px;
+        color: #666;
+        font-style: italic;
+      }
+
+      .achievement {
+        background: #f1c40f;
+        color: #333;
+        padding: 10px;
+        border-radius: 10px;
+        margin-top: 20px;
+        font-weight: bold;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="widget-container">
+      <h1>🎯 Mój Pierwszy Widget!</h1>
+      <div class="emoji">🚀</div>
+
+      <p>Licznik kliknięć:</p>
+      <div class="counter" id="counter">0</div>
+
+      <button onclick="incrementCounter()">Kliknij mnie! 👆</button>
+      <br />
+      <button class="reset-btn" onclick="resetCounter()">Resetuj</button>
+
+      <div class="message" id="message">
+        Brawo! Stworzyłeś swój pierwszy widget! 🎉
+      </div>
+
+      <div class="achievement" id="achievement">
+        🏆 Osiągnięcie odblokowane!
+      </div>
+    </div>
+
+    <script>
+      // Zmienna przechowująca liczbę kliknięć
+      let clickCount = 0;
+
+      // Funkcja zwiększająca licznik
+      function incrementCounter() {
+        clickCount++;
+        document.getElementById("counter").textContent = clickCount;
+
+        // Sprawdzamy osiągnięcia
+        checkAchievements();
+
+        // Animacja licznika
+        animateCounter();
+      }
+
+      // Funkcja resetująca licznik
+      function resetCounter() {
+        clickCount = 0;
+        document.getElementById("counter").textContent = clickCount;
+        document.getElementById("achievement").style.display = "none";
+        document.getElementById("message").textContent =
+          "Zresetowano! Zacznij od nowa 🔄";
+      }
+
+      // Funkcja sprawdzająca osiągnięcia
+      function checkAchievements() {
+        const achievement = document.getElementById("achievement");
+        const message = document.getElementById("message");
+
+        if (clickCount === 10) {
+          achievement.style.display = "block";
+          achievement.textContent = "🏆 10 kliknięć! Jesteś na dobrej drodze!";
+          message.textContent = "Świetnie Ci idzie! 💪";
+        } else if (clickCount === 25) {
+          achievement.textContent = "🥇 25 kliknięć! Mistrz klikania!";
+          message.textContent = "Niesamowite! 🌟";
+        } else if (clickCount === 50) {
+          achievement.textContent = "💎 50 kliknięć! Legenda!";
+          message.textContent = "Jesteś niepokonany! 🚀";
+        } else if (clickCount === 100) {
+          achievement.textContent = "👑 100 KLIKNIĘĆ! KRÓL WIDGETÓW!";
+          message.textContent = "To było epickie! 🎯🎯🎯";
+        }
+      }
+
+      // Prosta animacja licznika
+      function animateCounter() {
+        const counter = document.getElementById("counter");
+        counter.style.transform = "scale(1.2)";
+        setTimeout(() => {
+          counter.style.transform = "scale(1)";
+        }, 200);
+      }
+    </script>
+  </body>
+</html>
