@@ -3,171 +3,295 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mój Pierwszy Widget</title>
+    <title>Formularz kontaktowy</title>
     <style>
       body {
         margin: 0;
-        padding: 0;
-        font-family: Arial, sans-serif;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial,
+          sans-serif;
+        background: #f8f9fa;
       }
 
-      .widget-container {
+      .container {
+        max-width: 450px;
+        margin: 0 auto;
         background: white;
-        padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+      }
+
+      .header {
         text-align: center;
-        min-width: 300px;
+        margin-bottom: 30px;
       }
 
-      h1 {
-        color: #333;
-        margin-bottom: 10px;
-        font-size: 28px;
+      .header h2 {
+        color: #2c3e50;
+        margin: 0 0 10px 0;
+        font-size: 24px;
       }
 
-      .emoji {
-        font-size: 60px;
+      .header p {
+        color: #7f8c8d;
+        margin: 0;
+        font-size: 14px;
+      }
+
+      .form-group {
         margin-bottom: 20px;
       }
 
-      .counter {
-        font-size: 48px;
-        color: #667eea;
-        font-weight: bold;
-        margin: 20px 0;
+      label {
+        display: block;
+        margin-bottom: 6px;
+        color: #2c3e50;
+        font-weight: 500;
+        font-size: 14px;
       }
 
-      button {
-        background: #667eea;
+      input,
+      textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        font-size: 15px;
+        transition: all 0.3s;
+        box-sizing: border-box;
+        font-family: inherit;
+      }
+
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #3498db;
+        background: #f8fbff;
+      }
+
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+
+      .btn-send {
+        width: 100%;
+        padding: 14px;
+        background: #3498db;
         color: white;
         border: none;
-        padding: 15px 30px;
-        font-size: 18px;
-        border-radius: 10px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
         cursor: pointer;
         transition: all 0.3s;
-        margin: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
       }
 
-      button:hover {
-        background: #764ba2;
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      .btn-send:hover {
+        background: #2980b9;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
       }
 
-      button:active {
-        transform: translateY(0);
+      .btn-send:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
       }
 
-      .reset-btn {
-        background: #e74c3c;
-        font-size: 14px;
-        padding: 10px 20px;
-      }
-
-      .reset-btn:hover {
-        background: #c0392b;
-      }
-
-      .message {
+      .status {
         margin-top: 20px;
-        font-size: 16px;
-        color: #666;
-        font-style: italic;
-      }
-
-      .achievement {
-        background: #f1c40f;
-        color: #333;
-        padding: 10px;
-        border-radius: 10px;
-        margin-top: 20px;
-        font-weight: bold;
+        padding: 15px;
+        border-radius: 8px;
         display: none;
+        animation: slideIn 0.3s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+
+      .loading {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .info-box {
+        background: #e3f2fd;
+        border: 1px solid #bbdefb;
+        color: #1565c0;
+        padding: 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        margin-bottom: 20px;
+      }
+
+      .required {
+        color: #e74c3c;
       }
     </style>
   </head>
   <body>
-    <div class="widget-container">
-      <h1>🎯 Mój Pierwszy Widget!</h1>
-      <div class="emoji">🚀</div>
-
-      <p>Licznik kliknięć:</p>
-      <div class="counter" id="counter">0</div>
-
-      <button onclick="incrementCounter()">Kliknij mnie! 👆</button>
-      <br />
-      <button class="reset-btn" onclick="resetCounter()">Resetuj</button>
-
-      <div class="message" id="message">
-        Brawo! Stworzyłeś swój pierwszy widget! 🎉
+    <div class="container">
+      <div class="header">
+        <h2>✉️ Wyślij wiadomość</h2>
+        <p>Formularz połączony z Twoim Outlookiem</p>
       </div>
 
-      <div class="achievement" id="achievement">
-        🏆 Osiągnięcie odblokowane!
+      <div class="info-box">
+        ⚠️ <strong>Ważne:</strong> Podmień WEBHOOK_URL w kodzie na URL z
+        Make.com
       </div>
+
+      <form id="contactForm">
+        <div class="form-group">
+          <label>Email odbiorcy <span class="required">*</span></label>
+          <input
+            type="email"
+            name="email"
+            required
+            placeholder="odbiorca@firma.pl"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Temat <span class="required">*</span></label>
+          <input
+            type="text"
+            name="subject"
+            required
+            placeholder="np. Oferta współpracy - Apleona"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Imię odbiorcy</label>
+          <input type="text" name="name" placeholder="np. Jan Kowalski" />
+        </div>
+
+        <div class="form-group">
+          <label>Treść wiadomości <span class="required">*</span></label>
+          <textarea
+            name="message"
+            required
+            placeholder="Szanowny Panie/Pani,&#10;&#10;W nawiązaniu do naszej rozmowy..."
+          ></textarea>
+        </div>
+
+        <button type="submit" class="btn-send">
+          <span>Wyślij z mojego Outlooka</span>
+        </button>
+
+        <div id="status" class="status"></div>
+      </form>
     </div>
 
     <script>
-      // Zmienna przechowująca liczbę kliknięć
-      let clickCount = 0;
+      // TUTAJ WKLEJ SWÓJ WEBHOOK URL Z MAKE.COM
+      const WEBHOOK_URL =
+        "https://hook.eu2.make.com/u2nhtw4xedrbf9pe9wa1wxpl1e3ud45k";
 
-      // Funkcja zwiększająca licznik
-      function incrementCounter() {
-        clickCount++;
-        document.getElementById("counter").textContent = clickCount;
+      const form = document.getElementById("contactForm");
+      const statusDiv = document.getElementById("status");
+      const submitBtn = form.querySelector(".btn-send");
+      const btnText = submitBtn.querySelector("span");
 
-        // Sprawdzamy osiągnięcia
-        checkAchievements();
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-        // Animacja licznika
-        animateCounter();
-      }
+        // Reset statusu
+        statusDiv.style.display = "none";
+        statusDiv.className = "status";
 
-      // Funkcja resetująca licznik
-      function resetCounter() {
-        clickCount = 0;
-        document.getElementById("counter").textContent = clickCount;
-        document.getElementById("achievement").style.display = "none";
-        document.getElementById("message").textContent =
-          "Zresetowano! Zacznij od nowa 🔄";
-      }
+        // Pokaż loading
+        submitBtn.disabled = true;
+        btnText.textContent = "Wysyłanie...";
+        submitBtn.innerHTML =
+          '<span>Wysyłanie...</span><div class="loading"></div>';
 
-      // Funkcja sprawdzająca osiągnięcia
-      function checkAchievements() {
-        const achievement = document.getElementById("achievement");
-        const message = document.getElementById("message");
+        // Zbierz dane
+        const formData = new FormData(form);
+        const data = {
+          email: formData.get("email"),
+          subject: formData.get("subject"),
+          name: formData.get("name") || "Nieznany",
+          message: formData.get("message"),
+        };
 
-        if (clickCount === 10) {
-          achievement.style.display = "block";
-          achievement.textContent = "🏆 10 kliknięć! Jesteś na dobrej drodze!";
-          message.textContent = "Świetnie Ci idzie! 💪";
-        } else if (clickCount === 25) {
-          achievement.textContent = "🥇 25 kliknięć! Mistrz klikania!";
-          message.textContent = "Niesamowite! 🌟";
-        } else if (clickCount === 50) {
-          achievement.textContent = "💎 50 kliknięć! Legenda!";
-          message.textContent = "Jesteś niepokonany! 🚀";
-        } else if (clickCount === 100) {
-          achievement.textContent = "👑 100 KLIKNIĘĆ! KRÓL WIDGETÓW!";
-          message.textContent = "To było epickie! 🎯🎯🎯";
+        // Dodaj podpis
+        data.message += `\n\n---\nWysłane przez: Paweł Polanowski\nApleona\n${new Date().toLocaleDateString(
+          "pl-PL"
+        )}`;
+
+        try {
+          // Sprawdź czy webhook jest ustawiony
+          if (WEBHOOK_URL.includes("TUTAJ_WKLEJ")) {
+            throw new Error("Najpierw podmień WEBHOOK_URL w kodzie!");
+          }
+
+          // Wyślij do Make.com
+          const response = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          });
+
+          if (response.ok) {
+            statusDiv.className = "status success";
+            statusDiv.innerHTML =
+              "✅ <strong>Wysłano!</strong> Mail został wysłany z Twojego Outlooka.";
+            statusDiv.style.display = "block";
+            form.reset();
+          } else {
+            throw new Error("Błąd połączenia z Make.com");
+          }
+        } catch (error) {
+          statusDiv.className = "status error";
+          statusDiv.innerHTML = `❌ <strong>Błąd:</strong> ${error.message}`;
+          statusDiv.style.display = "block";
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = "<span>Wyślij z mojego Outlooka</span>";
         }
-      }
-
-      // Prosta animacja licznika
-      function animateCounter() {
-        const counter = document.getElementById("counter");
-        counter.style.transform = "scale(1.2)";
-        setTimeout(() => {
-          counter.style.transform = "scale(1)";
-        }, 200);
-      }
+      });
     </script>
   </body>
 </html>
