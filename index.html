@@ -254,11 +254,6 @@
           message: formData.get("message"),
         };
 
-        // Dodaj podpis
-        data.message += `\n\n---\nWysłane przez: Paweł Polanowski\nApleona\n${new Date().toLocaleDateString(
-          "pl-PL"
-        )}`;
-
         try {
           // Sprawdź czy webhook jest ustawiony
           if (WEBHOOK_URL.includes("TUTAJ_WKLEJ")) {
