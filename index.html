@@ -373,16 +373,6 @@
         background: #dee2e6;
       }
 
-      .first-setup {
-        background: #f8f9fa;
-        padding: 15px;
-        border-radius: 6px;
-        margin-bottom: 15px;
-        font-size: 13px;
-        color: #666;
-        text-align: center;
-      }
-
       @keyframes fadeIn {
         from {
           opacity: 0;
@@ -422,11 +412,6 @@
   </head>
   <body>
     <div class="container">
-      <div id="firstSetup" class="first-setup" style="display: none">
-        Pierwsze uruchomienie - skonfiguruj webhook i podpis klikając ikonki po
-        prawej
-      </div>
-
       <form id="contactForm">
         <div class="form-row">
           <div class="form-group">
@@ -657,10 +642,938 @@
       let emailSignature =
         localStorage.getItem("emailSignature") || defaultSignature;
 
-      // Sprawdź pierwsze uruchomienie
-      if (WEBHOOK_URL === defaultWebhook || !emailSignature) {
-        document.getElementById("firstSetup").style.display = "block";
+      const form = document.getElementById("contactForm");
+      const editor = document.getElementById("editor");
+      const statusDiv = document.getElementById("status");
+      const dropZone = document.getElementById("dropZone");
+      const fileInput = document.getElementById("attachments");
+      const fileList = document.getElementById("fileList");
+
+      let selectedFiles = [];
+
+      // Funkcje edytora
+      function formatText(command) {
+        document.execCommand(command, false, null);
+        editor.focus();
       }
+
+      function insertLink() {
+        const url = prompt("Podaj adres URL:");
+        if (url) {
+          document.execCommand("createLink", false, url);
+          editor.focus();
+        }
+      }
+
+      // Modal Webhook
+      function openWebhookModal() {
+        document.getElementById("webhookModal").style.display = "block";
+        document.getElementById("webhookInput").value = WEBHOOK_URL;
+      }
+
+      function closeWebhookModal() {
+        document.getElementById("webhookModal").style.display = "none";
+      }
+
+      function saveWebhook() {
+        const newUrl = document.getElementById("webhookInput").value;
+        if (newUrl && newUrl !== defaultWebhook) {
+          WEBHOOK_URL = newUrl;
+          localStorage.setItem("webhookUrl", newUrl);
+          statusDiv.className = "status success";
+          statusDiv.textContent = "✓ Webhook zapisany!";
+          statusDiv.style.display = "block";
+          setTimeout(() => {
+            statusDiv.style.display = "none";
+          }, 3000);
+        }
+        closeWebhookModal();
+      }
+
+      // Modal Podpis
+      function openSignatureModal() {
+        document.getElementById("signatureModal").style.display = "block";
+        document.getElementById("signatureInput").value = emailSignature;
+      }
+
+      function closeSignatureModal() {
+        document.getElementById("signatureModal").style.display = "none";
+      }
+
+      function saveSignature() {
+        emailSignature = document.getElementById("signatureInput").value;
+        localStorage.setItem("emailSignature", emailSignature);
+        statusDiv.className = "status success";
+        statusDiv.textContent = "✓ Podpis zapisany!";
+        statusDiv.style.display = "block";
+        setTimeout(() => {
+          statusDiv.style.display = "none";
+        }, 3000);
+        closeSignatureModal();
+      }
+
+      // Obsługa plików
+      function handleFiles(files) {
+        for (let file of files) {
+          if (!selectedFiles.find((f) => f.name === file.name)) {
+            selectedFiles.push(file);
+          }
+        }
+        updateFileList();
+      }
+
+      function updateFileList() {
+        fileList.innerHTML = "";
+        selectedFiles.forEach((file, index) => {
+          const item = document.createElement("div");
+          item.className = "file-item";
+          item.innerHTML = `
+                    <span class="file-name" title="${file.name}">${file.name}</span>
+                    <span class="file-remove" onclick="removeFile(${index})">×</span>
+                `;
+          fileList.appendChild(item);
+        });
+      }
+
+      function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        updateFileList();
+      }
+
+      // Drag & Drop
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("drag-over");
+      });
+
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("drag-over");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("drag-over");
+        handleFiles(e.dataTransfer.files);
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        handleFiles(e.target.files);
+      });
+
+      // Funkcja konwersji pliku na base64
+      function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => {
+            const base64 = reader.result.split(",")[1];
+            resolve(base64);
+          };
+          reader.onerror = (error) => reject(error);
+        });
+      }
+
+      // Formatowanie podpisu do HTML
+      function formatSignatureToHtml(signature) {
+        if (!signature) return "";
+
+        return signature
+          .replace(/\n/g, "<br>")
+          .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+          .replace(
+            /_{4,}/g,
+            '<hr style="border: none; border-top: 1px solid #ccc; margin: 10px 0;">'
+          );
+      }
+
+      // Wysyłanie formularza
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        if (WEBHOOK_URL === defaultWebhook) {
+          statusDiv.className = "status error";
+          statusDiv.textContent = "Skonfiguruj webhook!";
+          statusDiv.style.display = "block";
+          openWebhookModal();
+          return;
+        }
+
+        statusDiv.style.display = "none";
+        statusDiv.className = "status";
+
+        const htmlContent = editor.innerHTML;
+
+        if (!htmlContent || htmlContent.trim() === "") {
+          statusDiv.className = "status error";
+          statusDiv.textContent = "Wpisz treść!";
+          statusDiv.style.display = "block";
+          return;
+        }
+
+        const formData = new FormData(form);
+        const formattedSignature = formatSignatureToHtml(emailSignature);
+        const data = {
+          email: formData.get("email"),
+          subject: formData.get("subject"),
+          message:
+            htmlContent +
+            (formattedSignature ? "<br><br>" + formattedSignature : ""),
+          attachments: [],
+        };
+
+        const submitBtn = form.querySelector(".btn-send");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Wysyłanie...";
+
+        // Konwersja załączników
+        if (selectedFiles.length > 0) {
+          for (let file of selectedFiles) {
+            try {
+              const base64 = await fileToBase64(file);
+              data.attachments.push({
+                filename: file.name,
+                content: base64,
+                type: file.type,
+              });
+            } catch (err) {
+              statusDiv.className = "status error";
+              statusDiv.textContent = `Błąd: ${file.name}`;
+              statusDiv.style.display = "block";
+              submitBtn.disabled = false;
+              submitBtn.textContent = "Wyślij z Outlooka";
+              return;
+            }
+          }
+        }
+
+        try {
+          const response = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          });
+
+          if (response.ok) {
+            statusDiv.className = "status success";
+            statusDiv.textContent = "✓ Wysłano!";
+            statusDiv.style.display = "block";
+            form.reset();
+            editor.innerHTML = "";
+            selectedFiles = [];
+            updateFileList();
+          } else {
+            throw new Error("Błąd wysyłania");
+          }
+        } catch (error) {
+          statusDiv.className = "status error";
+          statusDiv.textContent = "✗ Błąd";
+          statusDiv.style.display = "block";
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Wyślij z Outlooka";
+        }
+      });
+
+      // Skróty klawiszowe
+      editor.addEventListener("keydown", (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          switch (e.key) {
+            case "b":
+              e.preventDefault();
+              formatText("bold");
+              break;
+            case "i":
+              e.preventDefault();
+              formatText("italic");
+              break;
+            case "u":
+              e.preventDefault();
+              formatText("underline");
+              break;
+            case "k":
+              e.preventDefault();
+              insertLink();
+              break;
+          }
+        }
+      });
+
+      // Zamknięcie modali przez kliknięcie w tło
+      window.addEventListener("click", (e) => {
+        if (e.target.classList.contains("modal")) {
+          e.target.style.display = "none";
+        }
+      });
+
+      // Obsługa Enter w polach formularza
+      document
+        .querySelectorAll('input[type="email"], input[type="text"]')
+        .forEach((input) => {
+          input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              const inputs = Array.from(
+                document.querySelectorAll(
+                  'input[type="email"], input[type="text"]'
+                )
+              );
+              const currentIndex = inputs.indexOf(e.target);
+              if (currentIndex < inputs.length - 1) {
+                inputs[currentIndex + 1].focus();
+              } else {
+                editor.focus();
+              }
+            }
+          });
+        });
+    </script>
+  </body>
+</html>
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Email Widget</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial,
+          sans-serif;
+        background: #f8f9fa;
+        overflow: hidden;
+        height: 100vh;
+      }
+
+      .container {
+        width: 100%;
+        height: 100vh;
+        max-height: 420px;
+        background: white;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .form-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .form-group {
+        flex: 1;
+        margin-bottom: 0;
+      }
+
+      .form-group.full {
+        flex: 1 1 100%;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 4px;
+        color: #2c3e50;
+        font-weight: 500;
+        font-size: 13px;
+      }
+
+      input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #e1e8ed;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.2s;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+      }
+
+      .editor-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 10px;
+        min-height: 0;
+      }
+
+      .editor-toolbar {
+        display: flex;
+        gap: 4px;
+        padding: 8px;
+        background: #f8f9fa;
+        border: 1px solid #e1e8ed;
+        border-bottom: none;
+        border-radius: 6px 6px 0 0;
+        flex-wrap: wrap;
+        justify-content: space-between;
+      }
+
+      .toolbar-left {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+
+      .toolbar-right {
+        display: flex;
+        gap: 4px;
+      }
+
+      .editor-btn {
+        padding: 4px 8px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #333;
+      }
+
+      .editor-btn:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+      }
+
+      .editor-btn svg {
+        width: 14px;
+        height: 14px;
+        fill: currentColor;
+      }
+
+      .editor-content {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #e1e8ed;
+        border-radius: 0 0 6px 6px;
+        background: white;
+        font-size: 14px;
+        line-height: 1.5;
+        overflow-y: auto;
+        min-height: 100px;
+      }
+
+      .editor-content:focus {
+        outline: none;
+        border-color: #3498db;
+      }
+
+      .editor-content:empty:before {
+        content: "Napisz swoją wiadomość tutaj...";
+        color: #adb5bd;
+      }
+
+      .file-area {
+        position: relative;
+        margin-bottom: 10px;
+      }
+
+      .file-input-wrapper {
+        position: relative;
+        border: 2px dashed #e1e8ed;
+        border-radius: 6px;
+        padding: 15px;
+        text-align: center;
+        transition: all 0.3s;
+        cursor: pointer;
+        min-height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+      }
+
+      .file-input-wrapper:hover,
+      .file-input-wrapper.drag-over {
+        border-color: #3498db;
+        background: #f8fbff;
+      }
+
+      .file-input-wrapper input[type="file"] {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+      }
+
+      .file-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .file-item {
+        display: flex;
+        align-items: center;
+        background: #f1f3f4;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        max-width: 200px;
+      }
+
+      .file-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-right: 6px;
+      }
+
+      .file-remove {
+        cursor: pointer;
+        color: #666;
+        font-weight: bold;
+        margin-left: auto;
+        padding: 0 4px;
+        font-size: 16px;
+      }
+
+      .file-remove:hover {
+        color: #000;
+      }
+
+      .bottom-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .btn-send {
+        flex: 1;
+        padding: 10px 20px;
+        background: #333;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-send:hover {
+        background: #000;
+      }
+
+      .btn-send:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+      }
+
+      .status {
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        display: none;
+        animation: slideIn 0.3s ease;
+      }
+
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .separator {
+        margin: 0 4px;
+        color: #dee2e6;
+      }
+
+      /* Modal */
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        animation: fadeIn 0.2s ease;
+      }
+
+      .modal-content {
+        position: relative;
+        background: white;
+        margin: 5% auto;
+        padding: 20px;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      .modal-close {
+        font-size: 24px;
+        cursor: pointer;
+        color: #999;
+        background: none;
+        border: none;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-close:hover {
+        color: #333;
+      }
+
+      .modal-body textarea {
+        width: 100%;
+        min-height: 300px;
+        padding: 10px;
+        border: 1px solid #e1e8ed;
+        border-radius: 6px;
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        resize: vertical;
+      }
+
+      .modal-footer {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        justify-content: flex-end;
+      }
+
+      .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: #333;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #000;
+      }
+
+      .btn-secondary {
+        background: #e9ecef;
+        color: #495057;
+      }
+
+      .btn-secondary:hover {
+        background: #dee2e6;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Responsywność dla małych widgetów */
+      @media (max-height: 450px) {
+        .container {
+          padding: 10px;
+        }
+        .form-row {
+          margin-bottom: 8px;
+        }
+        .editor-wrapper {
+          margin-bottom: 8px;
+        }
+        .file-area {
+          margin-bottom: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <form id="contactForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Do</label>
+            <input
+              type="email"
+              name="email"
+              required
+              placeholder="odbiorca@firma.pl"
+            />
+          </div>
+          <div class="form-group">
+            <label>Temat</label>
+            <input
+              type="text"
+              name="subject"
+              required
+              placeholder="Temat wiadomości"
+            />
+          </div>
+        </div>
+
+        <div class="editor-wrapper">
+          <div class="editor-toolbar">
+            <div class="toolbar-left">
+              <button
+                type="button"
+                class="editor-btn"
+                onclick="formatText('bold')"
+              >
+                <b>B</b>
+              </button>
+              <button
+                type="button"
+                class="editor-btn"
+                onclick="formatText('italic')"
+              >
+                <i>I</i>
+              </button>
+              <button
+                type="button"
+                class="editor-btn"
+                onclick="formatText('underline')"
+              >
+                <u>U</u>
+              </button>
+              <span class="separator">|</span>
+              <button
+                type="button"
+                class="editor-btn"
+                onclick="formatText('insertUnorderedList')"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M7 5h14v2H7zm0 8v-2h14v2H7zm0 6v-2h14v2H7zM4 5v2H2V5h2zm0 6v2H2v-2h2zm0 6v2H2v-2h2z"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="editor-btn"
+                onclick="formatText('insertOrderedList')"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M7 5h14v2H7zm0 8v-2h14v2H7zm0 6v-2h14v2H7zM3 3.5L2 2v4h1V3.5zm-1 7l1-1.5V12H2V9.5zm1 7.5L2 16v4h1v-2.5z"
+                  />
+                </svg>
+              </button>
+              <span class="separator">|</span>
+              <button
+                type="button"
+                class="editor-btn"
+                onclick="insertLink()"
+                title="Wstaw link"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div class="toolbar-right">
+              <button
+                type="button"
+                class="editor-btn"
+                onclick="formatText('removeFormat')"
+                title="Wyczyść formatowanie"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M3.27 5L2 6.27l6.97 6.97L6.5 19h3l1.57-3.66L16.73 21 18 19.73 3.55 5.27 3.27 5zM6 5v.18L8.82 8h2.4l-.72 1.68 2.1 2.1L14.21 8H20V5H6z"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="editor-btn"
+                onclick="openSignatureModal()"
+                title="Edytuj podpis"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="editor-btn"
+                onclick="openWebhookModal()"
+                title="Ustawienia"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div id="editor" class="editor-content" contenteditable="true"></div>
+        </div>
+
+        <div class="file-area">
+          <div id="dropZone" class="file-input-wrapper">
+            <input
+              type="file"
+              id="attachments"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+            />
+            <div>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="#666"
+                style="margin-bottom: 5px"
+              >
+                <path
+                  d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"
+                />
+              </svg>
+              <div>Kliknij lub przeciągnij pliki tutaj</div>
+            </div>
+            <small style="color: #666; margin-top: 4px"
+              >PDF, Word, Excel, obrazy (max 10MB)</small
+            >
+          </div>
+          <div id="fileList" class="file-list"></div>
+        </div>
+
+        <div class="bottom-row">
+          <button type="submit" class="btn-send">Wyślij z Outlooka</button>
+          <div id="status" class="status"></div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Modal Webhook -->
+    <div id="webhookModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Konfiguracja Webhook</h3>
+          <button class="modal-close" onclick="closeWebhookModal()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <label>URL Webhook z Make.com:</label>
+          <input
+            type="text"
+            id="webhookInput"
+            style="width: 100%; margin-top: 10px"
+            placeholder="https://hook.eu1.make.com/..."
+          />
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeWebhookModal()">
+            Anuluj
+          </button>
+          <button class="btn btn-primary" onclick="saveWebhook()">
+            Zapisz
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Podpis -->
+    <div id="signatureModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Edytuj podpis</h3>
+          <button class="modal-close" onclick="closeSignatureModal()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <label
+            >Twój podpis email (obsługuje formatowanie markdown:
+            **pogrubienie**, ____ dla linii):</label
+          >
+          <textarea
+            id="signatureInput"
+            placeholder="Wpisz swój podpis email tutaj..."
+          ></textarea>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeSignatureModal()">
+            Anuluj
+          </button>
+          <button class="btn btn-primary" onclick="saveSignature()">
+            Zapisz
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Domyślna konfiguracja
+      const defaultWebhook = "https://hook.eu1.make.com/WEBHOOK_URL";
+      const defaultSignature = "";
+
+      // Konfiguracja z localStorage
+      let WEBHOOK_URL = localStorage.getItem("webhookUrl") || defaultWebhook;
+      let emailSignature =
+        localStorage.getItem("emailSignature") || defaultSignature;
 
       const form = document.getElementById("contactForm");
       const editor = document.getElementById("editor");
@@ -700,7 +1613,6 @@
         if (newUrl && newUrl !== defaultWebhook) {
           WEBHOOK_URL = newUrl;
           localStorage.setItem("webhookUrl", newUrl);
-          document.getElementById("firstSetup").style.display = "none";
           statusDiv.className = "status success";
           statusDiv.textContent = "✓ Webhook zapisany!";
           statusDiv.style.display = "block";
@@ -724,7 +1636,6 @@
       function saveSignature() {
         emailSignature = document.getElementById("signatureInput").value;
         localStorage.setItem("emailSignature", emailSignature);
-        document.getElementById("firstSetup").style.display = "none";
         statusDiv.className = "status success";
         statusDiv.textContent = "✓ Podpis zapisany!";
         statusDiv.style.display = "block";
